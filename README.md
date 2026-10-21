@@ -184,13 +184,11 @@ Reads ECEF/positioning results from CSV, converts them to latitude, longitude, a
 ### BiLSTM
 
 - `models/BiLSTM/biLSTM.2.py`: the most complete Python training entry point. It creates overlapping sequences, standardizes inputs, builds bidirectional/standard LSTM and dropout layers, uses focal loss, reports metrics and permutation importance, plots training results, and saves the Keras model. Paths are hard-coded; `train_bilstm.py` would be a clearer name.
-- `models/BiLSTM/biLSTM.2 - 副本.py`: an older variant retained for development history. Move it to `archive/` or remove it after confirming no unique experiment depends on it.
 - `models/BiLSTM/BiLSTM.m`: MATLAB two-layer BiLSTM prototype with class weights and five-class output. It saves `trained_gnss_model.mat` but depends on missing helpers, and its focal-loss comments do not fully match the configuration.
 
 ### Base ConvLSTM
 
 - `models/Base_convLSTM/base_conv_lstm.py`: low-level `ConvLSTMCell` and `ConvLSTM` implementation managing convolutional recurrent state, shapes, dropout, and initialization; it is a layer, not a training entry point.
-- `models/Base_convLSTM/base_conv_lstm - 副本.py`: exact historical duplicate of `base_conv_lstm.py`.
 - `models/Base_convLSTM/conv_lstm2d.py`: two-dimensional `ConvLSTM2D` wrapper providing a Keras-like interface for spatial sequences.
 
 ### Time-masked ConvLSTM
@@ -216,7 +214,6 @@ Reads ECEF/positioning results from CSV, converts them to latitude, longitude, a
 5. `models/BiLSTM/biLSTM.2.py` — main temporal classifier.
 6. `models/SMconLSTM_training.py` and `models/Rho_module.py` — satellite-masked model.
 7. `models/load_model_SMconvLSTM.py` — inference.
-8. `predict_gnss_quality.m` — planned GNSS/INS integration.
 
 ## 9. Dependencies
 
