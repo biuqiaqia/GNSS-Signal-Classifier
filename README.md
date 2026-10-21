@@ -13,32 +13,9 @@ Buildings in urban canyons block or alter satellite signals, producing LOS, refl
 3. train conventional and temporal classifiers; and
 4. provide signal-quality predictions to weighted GNSS positioning and GNSS/INS integration systems.
 
-## 2. Processing Pipeline
 
-```text
-UBX/RINEX + ephemeris + reference trajectory
-                    |
-                    v
- DataProcess/RINEX_processing_main_f.m
-                    |
-                    v
-geometry, C/N0, residual, Doppler, corrected pseudorange
-                    |
-                    v
- DataTag/zzy_skymask_generation_f.m
- building KML + sky mask + reflection/diffraction ray tracing
-                    |
-                    v
-          labelled GNSS measurements
-                    |
-                    v
- MLP / RF / BiLSTM / ConvLSTM / SMConvLSTM
-                    |
-                    v
- GNSS weighting, positioning, or GNSS/INS integration
-```
 
-## 3. Signal Classes
+## 2. Signal Classes
 
 The earlier labelling code uses five classes:
 
