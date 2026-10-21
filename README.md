@@ -4,6 +4,22 @@ Research code for classifying GNSS signal propagation conditions in urban enviro
 
 > This is a research archive. Some scripts contain machine-specific paths, experimental implementations, and inconsistent class definitions. Raw UBX/RINEX data, personal trajectories, and most training CSV files are not included.
 
+## Table of Contents
+
+1. [Research Objectives](#1-research-objectives)
+2. [Signal Classes](#2-signal-classes)
+3. [Dataset Schema](#3-dataset-schema)
+4. [Root Files](#4-root-files)
+5. [`DataProcess/`](#5-dataprocess)
+6. [`DataTag/`](#6-datatag)
+7. [Data, Baselines, and Visualization](#7-data-baselines-and-visualization)
+8. [`models/`](#8-models)
+9. [Recommended Reading Order](#9-recommended-reading-order)
+10. [Dependencies](#10-dependencies)
+11. [Known Issues](#11-known-issues)
+12. [Data and Privacy](#12-data-and-privacy)
+13. [Third-party Code](#13-third-party-code)
+
 ## 1. Research Objectives
 
 Buildings in urban canyons block or alter satellite signals, producing LOS, reflected, diffracted, multipath, or fully NLOS observations. This project was developed to:
