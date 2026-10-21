@@ -17,8 +17,7 @@ Research code for classifying GNSS signal propagation conditions in urban enviro
 9. [Recommended Reading Order](#9-recommended-reading-order)
 10. [Dependencies](#10-dependencies)
 11. [Known Issues](#11-known-issues)
-12. [Data and Privacy](#12-data-and-privacy)
-13. [Third-party Code](#13-third-party-code)
+12. [Third-party Code](#13-third-party-code)
 
 ## 1. Research Objectives
 
@@ -255,10 +254,6 @@ Python dependencies include `numpy`, `pandas`, `scipy`, `matplotlib`, `scikit-le
 - There is no unified configuration, random seed, dependency lock file, or test suite.
 - `Gaussian_mixture_1.py` is better suited to the GNSS Error Map repository.
 
-## 12. Data and Privacy
-
-This repository is private. Raw observations and reference trajectories can reveal precise times and locations, so UBX/RINEX files, CPT/INS records, large experiment CSVs, and generated outputs are excluded by default. Future sharing should use controlled storage and retain only anonymized samples and schema documentation here.
-
-## 13. Third-party Code
+## 12. Third-party Code
 
 goGPS, GTSAM, ParforProgMon, satnav3p01, and other supporting files originate from their respective upstream projects or research codebases. Use and redistribution must comply with the licences and citation requirements in their directories. Inclusion here does not constitute relicensing.
