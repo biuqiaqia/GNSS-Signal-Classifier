@@ -9,15 +9,14 @@ Research code for classifying GNSS signal propagation conditions in urban enviro
 1. [Research Objectives](#1-research-objectives)
 2. [Signal Classes](#2-signal-classes)
 3. [Dataset Schema](#3-dataset-schema)
-4. [Root Files](#4-root-files)
-5. [`DataProcess/`](#5-dataprocess)
-6. [`DataTag/`](#6-datatag)
-7. [Data, Baselines, and Visualization](#7-data-baselines-and-visualization)
-8. [`models/`](#8-models)
-9. [Recommended Reading Order](#9-recommended-reading-order)
-10. [Dependencies](#10-dependencies)
-11. [Known Issues](#11-known-issues)
-12. [Third-party Code](#13-third-party-code)
+4. [`DataProcess/`](#5-dataprocess)
+5. [`DataTag/`](#6-datatag)
+6. [Data, Baselines, and Visualization](#7-data-baselines-and-visualization)
+7. [`models/`](#8-models)
+8. [Recommended Reading Order](#9-recommended-reading-order)
+9. [Dependencies](#10-dependencies)
+10. [Known Issues](#11-known-issues)
+11. [Third-party Code](#13-third-party-code)
 
 ## 1. Research Objectives
 
@@ -70,25 +69,8 @@ Some later Python models use four outputs, and some scripts use `Uncertainty` ra
 
 The later datasets additionally use `Site`, `CNR_rate`, `Diff_DelPr_PrRate`, `SecDeri_pr`, `Uncertainty`, and receiver-velocity fields. The exact differences and intended model associations are documented below.
 
-## 4. Root Files
 
-### `README.md`
-
-Project handover document covering the research purpose, data, file roles, execution order, dependencies, and known limitations.
-
-### `.gitignore`
-
-Excludes raw RINEX/UBX data, archives, generated output, caches, MATLAB temporary files, and most CSV files to prevent accidental publication of large data or personal trajectories. Files already tracked by Git are not removed automatically by new ignore rules.
-
-### `predict_gnss_quality.m`
-
-Experimental MATLAB-to-Python inference interface. It extracts elevation, azimuth, and CNR from one `GNSS_data` epoch, normalizes them, and is intended to call `py.predict_gnss.predict_single_epoch` for `pred_Type`. The referenced `predict_gnss.py` is missing, and `pred_Uncertainty` currently duplicates the predicted class rather than giving a confidence value. This documents the intended GNSS/INS connection but is not yet a complete runnable interface.
-
-### `Gaussian_mixture_1.py`
-
-Builds and plots a pseudorange-error Gaussian mixture from LOS, reflection, and diffraction states and their additional path lengths. It relates to the labels but fits the GNSS Error Map / measurement-noise project more closely.
-
-## 5. `DataProcess/`
+## 4. `DataProcess/`
 
 ### `DataProcess/RINEX_processing_main_f.m`
 
@@ -106,7 +88,7 @@ Third-party GTSAM MATLAB toolbox for factor graphs, navigation, and optimization
 
 Third-party MATLAB parallel-loop progress utility. `ParforProgressbar.m` is the `parfor` progress class, `progressbar.m` implements the bar, `testParforProgressbar.m` is an example, and `Readme.md`, `license.txt`, and `progress.png` are upstream documentation assets.
 
-## 6. `DataTag/`
+## 5. `DataTag/`
 
 ### `DataTag/zzy_skymask_generation_f.m`
 
@@ -116,7 +98,7 @@ Main label generator. It reads the per-satellite CSV and building KML, creates a
 
 Historical support code for building-KML parsing, sky-mask creation/merging, LOS/NLOS decisions, reflection and diffraction ray tracing, UTD diffraction coefficients, GNSS RUMS examples, and RINEX/positioning helpers. It also contains copies of goGPS, GTSAM, and satnav3p01. These preserve the original environment but should eventually be deduplicated and documented as dependencies.
 
-## 7. Data, Baselines, and Visualization
+## 6. Data, Baselines, and Visualization
 
 ### `TagDatabase/TagDatabase.csv`
 
@@ -192,7 +174,7 @@ Early multilayer-perceptron baseline using mainly `CNR` and `Elevation` to predi
 
 Reads ECEF/positioning results from CSV, converts them to latitude, longitude, and height, and creates a Google Earth KML trajectory. A clearer future name is `export_trajectory_to_kml.py`.
 
-## 8. `models/`
+## 7. `models/`
 
 ### Random Forest
 
@@ -225,7 +207,7 @@ Reads ECEF/positioning results from CSV, converts them to latitude, longitude, a
 - `models/gnss_masked_convlstm_model.h5`: trained model (about 169 KB). Training-data version, class mapping, TensorFlow version, validation performance, and random seed are not documented.
 - `models/load_model.py`: generic evaluator for an earlier temporal model using `Elevation`, `CNR`, `CNR_rate`, and `Diff_DelPr_PrRate`. The filename should eventually identify its architecture.
 
-## 9. Recommended Reading Order
+## 8. Recommended Reading Order
 
 1. `DataProcess/RINEX_processing_main_f.m` — feature generation.
 2. `DataTag/zzy_skymask_generation_f.m` — label generation.
@@ -236,13 +218,13 @@ Reads ECEF/positioning results from CSV, converts them to latitude, longitude, a
 7. `models/load_model_SMconvLSTM.py` — inference.
 8. `predict_gnss_quality.m` — planned GNSS/INS integration.
 
-## 10. Dependencies
+## 9. Dependencies
 
 MATLAB dependencies include MATLAB, Mapping Toolbox, Statistics and Machine Learning Toolbox, and the bundled goGPS, GTSAM, satnav3p01, and ray-tracing code.
 
 Python dependencies include `numpy`, `pandas`, `scipy`, `matplotlib`, `scikit-learn`, `tensorflow`, and `keras`. Exact versions have not been recovered; a future reproducibility pass should add `requirements.txt` or `environment.yml`.
 
-## 11. Known Issues
+## 10. Known Issues
 
 - Absolute `C:/Users/ZHANG/...` paths remain in several scripts.
 - `Type` and `Uncertainty` are not consistently defined.
@@ -254,6 +236,6 @@ Python dependencies include `numpy`, `pandas`, `scipy`, `matplotlib`, `scikit-le
 - There is no unified configuration, random seed, dependency lock file, or test suite.
 - `Gaussian_mixture_1.py` is better suited to the GNSS Error Map repository.
 
-## 12. Third-party Code
+## 11. Third-party Code
 
 goGPS, GTSAM, ParforProgMon, satnav3p01, and other supporting files originate from their respective upstream projects or research codebases. Use and redistribution must comply with the licences and citation requirements in their directories. Inclusion here does not constitute relicensing.
