@@ -53,7 +53,7 @@ Some later Python models use four outputs, and some scripts use `Uncertainty` ra
 | `D_Coeff` | Diffraction coefficient |
 | `Type` | Ray-tracing signal-type label |
 
-Other datasets may include `Site`, `CNR_rate`, `Diff_DelPr_PrRate`, `Uncertainty`, `Predicted_Type`, and `Predicted_Label`.
+The later datasets additionally use `Site`, `CNR_rate`, `Diff_DelPr_PrRate`, `SecDeri_pr`, `Uncertainty`, and receiver-velocity fields. The exact differences and intended model associations are documented below.
 
 ## 5. Root Files
 
@@ -105,7 +105,69 @@ Historical support code for building-KML parsing, sky-mask creation/merging, LOS
 
 ### `TagDatabase/TagDatabase.csv`
 
-Early consolidated labelled database containing satellite geometry, C/N0, residuals, reference positions, ray-tracing results, and `Type`. It may reveal experiment locations and trajectories; anonymize or remove it before making the repository public.
+The original consolidated labelled database and the largest dataset in this repository:
+
+- **259,358 observations, 28 columns, approximately 60.17 MB**;
+- covers multiple experiments over a broad GPS-time range;
+- contains geometry, C/N0, pseudorange residuals, least-squares and ground-truth positions, satellite state, ray-tracing results, and `Type`;
+- uses the original five-class `Type` definition (`0`–`4`); and
+- is the dataset explicitly referenced by the early `MLP/MLP_1.py` baseline.
+
+Its class distribution is highly imbalanced: 98,436 class-0, 140,704 class-1, 1,557 class-2, 16,275 class-3, and 2,386 class-4 observations. It should therefore not be treated as a balanced training set without an explicit sampling or weighting strategy.
+
+### `TagDatabase/data_b_output.csv`
+
+The four-class dataset read by both Random Forest scripts through their original path `System_ongoing/output/data_b.csv`:
+
+- **9,208 observations, 30 columns, approximately 2.26 MB**;
+- adds `CNR_rate`, `Diff_DelPr_PrRate`, `SecDeri_pr`, and `Site` for temporal and site-aware modelling;
+- uses weighted least-squares position fields (`WLS_*`) instead of the original `LS_*` fields;
+- removes `Max_PRN` and `Max_Residual`; and
+- maps `Type` to `0: Multi_Path`, `1: LOS`, `2: Reflection`, and `3: Diffraction`.
+
+The class counts are 2,052, 2,477, 2,076, and 2,603 respectively. Compared with `TagDatabase.csv`, this is a much smaller and more balanced model-ready dataset.
+
+### `TagDatabase/data_b_dataset.csv`
+
+The version read by `models/BiLSTM/biLSTM.2.py` through its original path `System_ongoing/Dataset/data_b.csv`. It has the same 9,208 observations, sites, timestamps, and feature schema as `data_b_output.csv`, but the files are **not identical**:
+
+- classes 0 and 1 are unchanged;
+- class 2 contains 1,749 rather than 2,076 observations; and
+- class 3 contains 2,930 rather than 2,603 observations.
+
+This means 327 labels were reassigned from class 2 to class 3 in the BiLSTM copy. Both versions are retained to preserve reproducibility; they must not be silently substituted for one another. The repository does not yet contain documentation explaining why those labels were changed.
+
+### `TagDatabase/ublox_3_tag.csv`
+
+The later continuous u-blox experiment used directly by `models/SMconLSTM_training.py`:
+
+- **20,076 observations, 34 columns, approximately 7.66 MB**;
+- covers GPS times 133292–136799, suggesting a single continuous collection rather than a multi-experiment database;
+- adds receiver velocity (`VRx`, `VRy`, `VRz`), temporal derivative features, `Uncertainty`, and `los`; and
+- is reshaped by the trainer into a `sample × time × PRN × feature` tensor with an availability mask.
+
+Although the file retains `Type`, SMConvLSTM is trained against `Uncertainty`. The observed relationship is:
+
+| `Type` | `Uncertainty` | Observations |
+|---:|---:|---:|
+| 0 | 2 | 1,375 |
+| 1 | 0 | 12,780 |
+| 2 | 3 | 4,617 |
+| 3 | 0 | 538 |
+| 3 | 1 | 766 |
+
+`Uncertainty` is therefore a derived categorical target, not a probability or confidence score. In particular, `Type=3` is split between two uncertainty classes. The physical rule used for that split has not yet been recovered and should not be inferred solely from the numeric values.
+
+### Dataset lineage and model association
+
+```text
+TagDatabase.csv       -> early five-class archive -> MLP
+data_b_output.csv     -> balanced four-class set  -> Random Forest
+data_b_dataset.csv    -> relabelled four-class set -> BiLSTM
+ublox_3_tag.csv       -> later masked sequence set -> SMConvLSTM
+```
+
+These datasets may reveal experimental locations and trajectories. They should be anonymized or removed before the repository is made public.
 
 ### `MLP/MLP_1.py`
 

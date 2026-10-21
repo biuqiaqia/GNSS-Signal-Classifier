@@ -16,4 +16,7 @@ outputs/
 Dataset/
 *.csv
 !TagDatabase/TagDatabase.csv
+!TagDatabase/data_b_output.csv
+!TagDatabase/data_b_dataset.csv
+!TagDatabase/ublox_3_tag.csv
 
