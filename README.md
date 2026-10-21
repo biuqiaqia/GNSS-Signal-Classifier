@@ -1,303 +1,209 @@
 # GNSS Signal Classifier
 
-本仓库保存城市环境 GNSS 信号传播类型识别项目的研究代码。项目使用 RINEX 观测、广播星历、参考轨迹和建筑物三维模型生成逐卫星特征与射线追踪标签，再使用 MLP、Random Forest、BiLSTM、ConvLSTM 和带空间遮罩的 SMConvLSTM 进行分类。
+Research code for classifying GNSS signal propagation conditions in urban environments. The project combines RINEX observations, broadcast ephemerides, reference trajectories, and 3D building models to generate per-satellite features and ray-tracing labels. MLP, Random Forest, BiLSTM, ConvLSTM, and spatially masked ConvLSTM (SMConvLSTM) models are then used for classification.
 
-> 这是研究代码归档。部分早期脚本仍包含本机绝对路径、不同版本的类别定义及实验性实现。原始 UBX/RINEX、个人轨迹及大部分训练 CSV 未上传。
+> This is a research archive. Some scripts contain machine-specific paths, experimental implementations, and inconsistent class definitions. Raw UBX/RINEX data, personal trajectories, and most training CSV files are not included.
 
-## 1. 研究目标
+## 1. Research Objectives
 
-城市峡谷中的建筑物会遮挡或改变卫星信号传播路径，形成 LOS、反射、绕射、多路径或纯 NLOS 信号。本项目用于：
+Buildings in urban canyons block or alter satellite signals, producing LOS, reflected, diffracted, multipath, or fully NLOS observations. This project was developed to:
 
-1. 从原始 GNSS 数据生成逐历元、逐卫星的观测特征；
-2. 利用建筑 KML、天空遮罩和射线追踪生成信号类型标签；
-3. 训练机器学习和时序神经网络分类器；
-4. 将分类结果提供给后续 GNSS 加权定位及 GNSS/INS 融合模块。
+1. generate epoch-level, satellite-level features from raw GNSS data;
+2. derive propagation labels using building KML files, sky masks, and ray tracing;
+3. train conventional and temporal classifiers; and
+4. provide signal-quality predictions to weighted GNSS positioning and GNSS/INS integration systems.
 
-## 2. 总体数据流
+## 2. Processing Pipeline
 
 ```text
-UBX/RINEX + broadcast ephemeris + reference trajectory
-                         |
-                         v
-        DataProcess/RINEX_processing_main_f.m
-                         |
-                         v
- per-satellite features: geometry, C/N0, residual, Doppler...
-                         |
+UBX/RINEX + ephemeris + reference trajectory
+                    |
+                    v
+ DataProcess/RINEX_processing_main_f.m
+                    |
+                    v
+geometry, C/N0, residual, Doppler, corrected pseudorange
+                    |
+                    v
+ DataTag/zzy_skymask_generation_f.m
  building KML + sky mask + reflection/diffraction ray tracing
-                         |
-                         v
-         DataTag/zzy_skymask_generation_f.m
-                         |
-                         v
-             labelled GNSS measurements
-                         |
-       MLP / RF / BiLSTM / ConvLSTM / SMConvLSTM
-                         |
-                         v
-            predicted signal type/quality
-                         |
-                         v
-             GNSS weighting or GNSS/INS
+                    |
+                    v
+          labelled GNSS measurements
+                    |
+                    v
+ MLP / RF / BiLSTM / ConvLSTM / SMConvLSTM
+                    |
+                    v
+ GNSS weighting, positioning, or GNSS/INS integration
 ```
 
-## 3. 信号类别
+## 3. Signal Classes
 
-早期标签代码使用以下五类定义：
+The earlier labelling code uses five classes:
 
-| 数值 | 名称 | 含义 |
+| Value | Class | Meaning |
 |---:|---|---|
-| 0 | NLOS | 直达信号被遮挡，未确认有效反射或绕射路径 |
-| 1 | LOS | 直视信号 |
-| 2 | NLOS_Refl | 以反射路径到达的 NLOS 信号 |
-| 3 | NLOS_Diff | 以绕射路径到达的 NLOS 信号 |
-| 4 | LOS_Diff | 存在直达分量，同时包含绕射影响 |
+| 0 | NLOS | Direct path is blocked; no valid reflection or diffraction path is confirmed |
+| 1 | LOS | Direct line-of-sight signal |
+| 2 | NLOS_Refl | NLOS signal arriving through reflection |
+| 3 | NLOS_Diff | NLOS signal arriving through diffraction |
+| 4 | LOS_Diff | Direct component accompanied by diffraction effects |
 
-后期部分 Python 模型使用四类输出，并在某些训练程序中用 `Uncertainty` 而不是 `Type` 作为标签。复现实验前必须核对目标 CSV 的类别映射。
+Some later Python models use four outputs, and some scripts use `Uncertainty` rather than `Type` as the target. Verify each input CSV's class mapping before reproducing an experiment.
 
-## 4. 数据字段
+## 4. Dataset Schema
 
-`TagDatabase/TagDatabase.csv` 的列如下：
+`TagDatabase/TagDatabase.csv` contains:
 
-| 字段 | 说明 |
+| Field | Description |
 |---|---|
-| `GPS_Time` | GPS 周内秒或实验使用的 GPS 时间 |
-| `PRN` | 卫星编号 |
-| `Elevation`, `Azimuth` | 卫星仰角和方位角 |
-| `CNR` | 载噪比/信号强度特征 |
-| `Pr_Residual` | 伪距残差 |
-| `LS_Latitude`, `LS_Longitude`, `LS_Height` | 最小二乘定位结果 |
-| `GT_Latitude`, `GT_Longitude`, `GT_Height` | 参考系统位置 |
-| `Doppler` | 多普勒观测 |
-| `SaVX`, `SaVY`, `SaVZ` | 卫星 ECEF 速度 |
-| `lambda` | 信号波长 |
-| `corrected_Pr` | 应用卫星钟差、电离层、对流层等改正后的伪距 |
-| `SaX`, `SaY`, `SaZ` | 卫星 ECEF 位置 |
-| `Max_PRN`, `Max_Residual` | 用于差分/参考的卫星及其残差 |
-| `Visibility` | 基于天空遮罩的 `Visible`/`Blocked` 判断 |
-| `ReflDist`, `DiffDist` | 射线追踪得到的反射、绕射附加路径长度 |
-| `D_Coeff` | 绕射系数 |
-| `Type` | 射线追踪生成的信号类型标签 |
+| `GPS_Time` | GPS time-of-week, or the experiment's GPS time convention |
+| `PRN` | Satellite identifier |
+| `Elevation`, `Azimuth` | Satellite elevation and azimuth |
+| `CNR` | Carrier-to-noise ratio / signal strength |
+| `Pr_Residual` | Pseudorange residual |
+| `LS_Latitude`, `LS_Longitude`, `LS_Height` | Least-squares position |
+| `GT_Latitude`, `GT_Longitude`, `GT_Height` | Ground-truth/reference position |
+| `Doppler` | Doppler observation |
+| `SaVX`, `SaVY`, `SaVZ` | Satellite ECEF velocity |
+| `lambda` | Signal wavelength |
+| `corrected_Pr` | Pseudorange after clock, ionospheric, tropospheric, and related corrections |
+| `SaX`, `SaY`, `SaZ` | Satellite ECEF position |
+| `Max_PRN`, `Max_Residual` | Reference satellite and residual used in differencing-related processing |
+| `Visibility` | Sky-mask result, normally `Visible` or `Blocked` |
+| `ReflDist`, `DiffDist` | Extra reflected and diffracted path lengths from ray tracing |
+| `D_Coeff` | Diffraction coefficient |
+| `Type` | Ray-tracing signal-type label |
 
-不同阶段的数据还可能包含 `Site`、`CNR_rate`、`Diff_DelPr_PrRate`、`Uncertainty`、`Predicted_Type` 和 `Predicted_Label`。
+Other datasets may include `Site`, `CNR_rate`, `Diff_DelPr_PrRate`, `Uncertainty`, `Predicted_Type`, and `Predicted_Label`.
 
-## 5. 根目录文件
+## 5. Root Files
 
 ### `README.md`
 
-当前项目交接文档，记录研究目标、数据格式、各文件用途、运行顺序及已知问题。
+Project handover document covering the research purpose, data, file roles, execution order, dependencies, and known limitations.
 
 ### `.gitignore`
 
-排除原始 RINEX/UBX、压缩包、生成结果、缓存、MATLAB 临时文件和大部分 CSV，避免上传大型数据或个人轨迹。已经存在于历史提交中的文件不会因为加入 `.gitignore` 而自动取消跟踪。
+Excludes raw RINEX/UBX data, archives, generated output, caches, MATLAB temporary files, and most CSV files to prevent accidental publication of large data or personal trajectories. Files already tracked by Git are not removed automatically by new ignore rules.
 
 ### `predict_gnss_quality.m`
 
-MATLAB 到 Python 分类器的实验接口。从一个 `GNSS_data` 历元提取仰角、方位角和 CNR，使用给定均值/标准差归一化，再计划调用 `py.predict_gnss.predict_single_epoch` 返回 `pred_Type`。
-
-当前仓库尚缺少对应的 `predict_gnss.py`；`pred_Uncertainty` 也只是 `pred_Type` 的复制，并非真实置信度。因此它代表 GNSS/INS 集成方向，尚不是完整可运行接口。
+Experimental MATLAB-to-Python inference interface. It extracts elevation, azimuth, and CNR from one `GNSS_data` epoch, normalizes them, and is intended to call `py.predict_gnss.predict_single_epoch` for `pred_Type`. The referenced `predict_gnss.py` is missing, and `pred_Uncertainty` currently duplicates the predicted class rather than giving a confidence value. This documents the intended GNSS/INS connection but is not yet a complete runnable interface.
 
 ### `Gaussian_mixture_1.py`
 
-使用 LOS、反射和绕射状态及附加路径长度构造伪距误差高斯混合模型，并绘制各分量和总概率密度。它与分类标签有关，但更接近 GNSS Error Map/测量噪声建模，目前作为交叉项目实验文件保留。
+Builds and plots a pseudorange-error Gaussian mixture from LOS, reflection, and diffraction states and their additional path lengths. It relates to the labels but fits the GNSS Error Map / measurement-noise project more closely.
 
-## 6. `DataProcess/`：GNSS 数据预处理
+## 6. `DataProcess/`
 
 ### `DataProcess/RINEX_processing_main_f.m`
 
-原始 GNSS 处理主程序：
-
-- 读取 RINEX observation 与 broadcast navigation；
-- 计算卫星位置、速度、钟差和传播改正；
-- 生成仰角、方位角、C/N0、Doppler 和改正伪距；
-- 执行最小二乘定位并与参考轨迹对齐；
-- 计算伪距残差或差分伪距误差；
-- 输出供标签生成和模型训练使用的逐卫星 CSV。
-
-文件中的输入路径和实验坐标需要按本机数据修改。
+Main raw-GNSS processor. It reads RINEX observations and broadcast navigation, calculates satellite position/velocity/clock corrections, produces elevation, azimuth, C/N0, Doppler, and corrected pseudorange, performs least-squares positioning, aligns results with a reference trajectory, calculates residuals, and exports per-satellite CSV data. Embedded input paths and experimental coordinates must be changed for new data.
 
 ### `DataProcess/goGPS/`
 
-第三方 goGPS MATLAB 库。主要子模块：
-
-- `input_output/`：RINEX、RTCM、UBX、NMEA、SP3 等格式读写；
-- `positioning/`：卫星位置、误差改正、最小二乘和 Kalman 定位；
-- `utility/`：坐标、时间、统计和 GNSS 工具函数；
-- `obj/`：goGPS 对象类；
-- `settings/`：示例配置；
-- `plot/`：定位和卫星结果绘图。
+Third-party goGPS MATLAB library. `input_output/` handles RINEX, RTCM, UBX, NMEA, and SP3; `positioning/` contains satellite, correction, least-squares, and Kalman routines; `utility/` contains coordinate/time/GNSS helpers; `obj/` contains classes; `settings/` contains examples; and `plot/` contains visualization functions.
 
 ### `DataProcess/gtsam_toolbox-master/`
 
-第三方 GTSAM MATLAB toolbox，提供因子图、导航与优化接口。它主要作为历史开发环境依赖保存；当前分类训练脚本不直接使用它作为模型框架。
+Third-party GTSAM MATLAB toolbox for factor graphs, navigation, and optimization. It is retained as part of the historical environment; current classifier scripts do not directly use it as their model framework.
 
 ### `DataProcess/fsaxen-ParforProgMon-f99c6f0/`
 
-第三方 MATLAB 并行循环进度显示工具：
+Third-party MATLAB parallel-loop progress utility. `ParforProgressbar.m` is the `parfor` progress class, `progressbar.m` implements the bar, `testParforProgressbar.m` is an example, and `Readme.md`, `license.txt`, and `progress.png` are upstream documentation assets.
 
-- `ParforProgressbar.m`：面向 `parfor` 的进度条类；
-- `progressbar.m`：进度条实现；
-- `testParforProgressbar.m`：示例/测试；
-- `Readme.md`、`license.txt`：上游说明和许可证；
-- `progress.png`：上游文档图片。
-
-## 7. `DataTag/`：建筑环境与信号标签
+## 7. `DataTag/`
 
 ### `DataTag/zzy_skymask_generation_f.m`
 
-标签生成主程序。读取逐卫星 CSV 和建筑 KML，生成天空遮罩并调用反射/绕射射线追踪，最后添加：
-
-- `Visibility`；
-- `ReflDist`；
-- `DiffDist`；
-- `D_Coeff`；
-- `Type`。
-
-输出通常为 `<experiment>_tag.csv`，另可输出被过滤的记录。
+Main label generator. It reads the per-satellite CSV and building KML, creates a sky mask, runs reflection/diffraction ray tracing, and appends `Visibility`, `ReflDist`, `DiffDist`, `D_Coeff`, and `Type`. Output is normally `<experiment>_tag.csv`, with optional rejected-record output.
 
 ### `DataTag/Attachment/`
 
-标签生成所需的历史附件和算法依赖，主要包括建筑 KML 读取、sky-mask 生成与合并、LOS/NLOS 判断、反射/绕射射线追踪、UTD 绕射系数、GNSS RUMS 示例及 RINEX/定位辅助函数。
+Historical support code for building-KML parsing, sky-mask creation/merging, LOS/NLOS decisions, reflection and diffraction ray tracing, UTD diffraction coefficients, GNSS RUMS examples, and RINEX/positioning helpers. It also contains copies of goGPS, GTSAM, and satnav3p01. These preserve the original environment but should eventually be deduplicated and documented as dependencies.
 
-其内部还包含 goGPS、GTSAM、satnav3p01 等第三方库副本。保留它们是为了还原原实验环境，后续应考虑去重并改为依赖说明。
-
-## 8. 数据、基线与可视化
+## 8. Data, Baselines, and Visualization
 
 ### `TagDatabase/TagDatabase.csv`
 
-早期项目阶段汇总的带标签 GNSS 数据库，包含几何、C/N0、伪距残差、参考位置、射线追踪结果和 `Type` 标签。该文件可能含实验地点和参考轨迹；仓库已设为 Private。若以后公开，应先匿名化或删除。
+Early consolidated labelled database containing satellite geometry, C/N0, residuals, reference positions, ray-tracing results, and `Type`. It may reveal experiment locations and trajectories; anonymize or remove it before making the repository public.
 
 ### `MLP/MLP_1.py`
 
-最早期多层感知机基线。主要使用 `CNR` 和 `Elevation` 对 `Type` 分类，包含标准化、类别平衡、训练、验证和决策边界可视化。当前使用占位式 CSV 路径，代表早期模型探索。
+Early multilayer-perceptron baseline using mainly `CNR` and `Elevation` to predict `Type`. It includes standardization, balancing, training, validation, and decision-boundary visualization. Its CSV path is a placeholder.
 
 ### `Visualized_Path/to kml.f.py`
 
-轨迹可视化工具。读取 CSV 中的 ECEF/定位结果，将坐标转换为经纬高并生成 Google Earth KML 路径。建议以后改名为 `export_trajectory_to_kml.py`。
+Reads ECEF/positioning results from CSV, converts them to latitude, longitude, and height, and creates a Google Earth KML trajectory. A clearer future name is `export_trajectory_to_kml.py`.
 
-## 9. `models/`：分类模型
+## 9. `models/`
 
 ### Random Forest
 
-#### `models/RF/RF.py`
-
-固定时间窗口 RF 基线。按站点、卫星和连续时间构建窗口，将窗口特征展平并以窗口多数类别作为标签。使用 `Elevation`、`CNR`、`CNR_rate`、`Diff_DelPr_PrRate`，输出分类报告、混淆矩阵和特征重要性。
-
-#### `models/RF/RF_nogroup.py`
-
-统计特征 RF 版本。对卫星分组提取均值、标准差等统计量，用于比较“统计特征”和“展开时间窗口”方法。
+- `models/RF/RF.py`: builds fixed windows grouped by site, satellite, and continuous time; flattens `Elevation`, `CNR`, `CNR_rate`, and `Diff_DelPr_PrRate`; uses the window majority class; and reports metrics, confusion matrix, and feature importance.
+- `models/RF/RF_nogroup.py`: extracts grouped statistics such as means and standard deviations, allowing statistical aggregation to be compared with flattened windows.
 
 ### BiLSTM
 
-#### `models/BiLSTM/biLSTM.2.py`
-
-较完整的 Python BiLSTM 训练入口：构建重叠时序、标准化输入、使用双向 LSTM/普通 LSTM/Dropout、使用 Focal Loss、输出分类报告/混淆矩阵/训练曲线/permutation importance，并保存 Keras 模型。它是与项目总结中 BiLSTM 分类结果最相关的候选程序。当前路径写死，建议改名为 `train_bilstm.py`。
-
-#### `models/BiLSTM/biLSTM.2 - 副本.py`
-
-较早的 Python BiLSTM 副本，与正式版本存在少量差异。保留用于追溯开发过程；后续建议移入 `archive/` 或删除。
-
-#### `models/BiLSTM/BiLSTM.m`
-
-MATLAB BiLSTM 原型。构建两层 BiLSTM，使用类别权重训练五分类模型，并保存 `trained_gnss_model.mat`。当前依赖未随文件提供的辅助函数，且 Focal Loss 注释与实际配置不完全一致。
+- `models/BiLSTM/biLSTM.2.py`: the most complete Python training entry point. It creates overlapping sequences, standardizes inputs, builds bidirectional/standard LSTM and dropout layers, uses focal loss, reports metrics and permutation importance, plots training results, and saves the Keras model. Paths are hard-coded; `train_bilstm.py` would be a clearer name.
+- `models/BiLSTM/biLSTM.2 - 副本.py`: an older variant retained for development history. Move it to `archive/` or remove it after confirming no unique experiment depends on it.
+- `models/BiLSTM/BiLSTM.m`: MATLAB two-layer BiLSTM prototype with class weights and five-class output. It saves `trained_gnss_model.mat` but depends on missing helpers, and its focal-loss comments do not fully match the configuration.
 
 ### Base ConvLSTM
 
-#### `models/Base_convLSTM/base_conv_lstm.py`
-
-基础 ConvLSTM/ConvRNN 实现，定义 `ConvLSTMCell` 和 `ConvLSTM`，负责卷积循环状态、shape、dropout 和 state 管理。它是底层层实现，不是直接训练入口。
-
-#### `models/Base_convLSTM/base_conv_lstm - 副本.py`
-
-与 `base_conv_lstm.py` 内容完全相同的历史副本。后续建议删除。
-
-#### `models/Base_convLSTM/conv_lstm2d.py`
-
-在基础 `ConvLSTM` 上提供二维封装 `ConvLSTM2D`，使其以类似 Keras layer 的方式接收二维空间序列。
+- `models/Base_convLSTM/base_conv_lstm.py`: low-level `ConvLSTMCell` and `ConvLSTM` implementation managing convolutional recurrent state, shapes, dropout, and initialization; it is a layer, not a training entry point.
+- `models/Base_convLSTM/base_conv_lstm - 副本.py`: exact historical duplicate of `base_conv_lstm.py`.
+- `models/Base_convLSTM/conv_lstm2d.py`: two-dimensional `ConvLSTM2D` wrapper providing a Keras-like interface for spatial sequences.
 
 ### Time-masked ConvLSTM
 
-#### `models/Time_masked_convLSTM/self-made masked_conv_LSTM.py`
-
-早期自制 Masked ConvLSTM，实现卷积循环单元和 mask 传播，避免将缺失卫星/缺失时刻的零填充值视为真实观测。
-
-#### `models/Time_masked_convLSTM/masked_convLSTM2D_module.py`
-
-另一阶段的 `MaskedConvLSTM2D` 模块，定义 `ConvLSTMCell`、`ConvLSTM` 和 `MaskedConvLSTM2D`。与模型根目录同名文件并非完全相同。
-
-#### `models/masked_convLSTM2D_module.py`
-
-后期复制到模型根目录的 Masked ConvLSTM 实现，供脚本直接导入。后续需通过实验记录确定两版中的权威版本。
+- `models/Time_masked_convLSTM/self-made masked_conv_LSTM.py`: early custom implementation that propagates a mask so zero padding for missing satellites/time steps is not interpreted as an observation.
+- `models/Time_masked_convLSTM/masked_convLSTM2D_module.py`: another implementation defining `ConvLSTMCell`, `ConvLSTM`, and `MaskedConvLSTM2D`; it differs from the root-level version.
+- `models/masked_convLSTM2D_module.py`: later copy placed at the model root for direct imports. Experiment records are needed to determine which version is authoritative.
 
 ### SMConvLSTM
 
-#### `models/Rho_module.py`
+- `models/Rho_module.py`: core custom `SMConvLSTMCell` and `SMConvLSTM` layers, jointly handling time, satellite/spatial dimensions, and observation masks.
+- `models/SMconLSTM_training.py`: reshapes CSV data into `sample × time × PRN × feature`, masks unavailable satellites, and trains a four-class model with `Elevation`, `Azimuth`, and `CNR`. It saves an HDF5 checkpoint but uses `Uncertainty` as its target and contains hard-coded paths.
+- `models/load_model_SMconvLSTM.py`: loads the HDF5 model and custom layers, predicts CSV records, writes `Predicted_Type`/`Predicted_Label`, and reports metrics when ground truth exists.
+- `models/gnss_masked_convlstm_model.h5`: trained model (about 169 KB). Training-data version, class mapping, TensorFlow version, validation performance, and random seed are not documented.
+- `models/load_model.py`: generic evaluator for an earlier temporal model using `Elevation`, `CNR`, `CNR_rate`, and `Diff_DelPr_PrRate`. The filename should eventually identify its architecture.
 
-后期模型核心自定义层，定义 `SMConvLSTMCell` 和 `SMConvLSTM`，同时处理时间、卫星/空间维度和观测可用性 mask。
+## 10. Recommended Reading Order
 
-#### `models/SMconLSTM_training.py`
+1. `DataProcess/RINEX_processing_main_f.m` — feature generation.
+2. `DataTag/zzy_skymask_generation_f.m` — label generation.
+3. `TagDatabase/TagDatabase.csv` — schema and class distribution.
+4. `MLP/MLP_1.py` or `models/RF/` — conventional baselines.
+5. `models/BiLSTM/biLSTM.2.py` — main temporal classifier.
+6. `models/SMconLSTM_training.py` and `models/Rho_module.py` — satellite-masked model.
+7. `models/load_model_SMconvLSTM.py` — inference.
+8. `predict_gnss_quality.m` — planned GNSS/INS integration.
 
-SMConvLSTM 训练入口。将 CSV 整理为“样本 × 时间 × PRN × 特征”张量，以 mask 标记卫星可用性，使用 `Elevation`、`Azimuth` 和 `CNR` 训练四分类模型，并保存 HDF5 checkpoint。当前脚本使用 `Uncertainty` 作为标签，且路径写死。
+## 11. Dependencies
 
-#### `models/load_model_SMconvLSTM.py`
+MATLAB dependencies include MATLAB, Mapping Toolbox, Statistics and Machine Learning Toolbox, and the bundled goGPS, GTSAM, satnav3p01, and ray-tracing code.
 
-SMConvLSTM 批量推理和评估程序。加载 `.h5` 与自定义层，对新 CSV 预测，生成 `Predicted_Type` 和 `Predicted_Label`；存在真实标签时输出分类报告与混淆矩阵。
+Python dependencies include `numpy`, `pandas`, `scipy`, `matplotlib`, `scikit-learn`, `tensorflow`, and `keras`. Exact versions have not been recovered; a future reproducibility pass should add `requirements.txt` or `environment.yml`.
 
-#### `models/gnss_masked_convlstm_model.h5`
+## 12. Known Issues
 
-已训练的 SMConvLSTM 模型，约 169 KB。仍需补充训练数据版本、类别映射、TensorFlow 版本、验证性能和随机种子。
+- Absolute `C:/Users/ZHANG/...` paths remain in several scripts.
+- `Type` and `Uncertainty` are not consistently defined.
+- Four-class and five-class implementations coexist.
+- `predict_gnss_quality.m` references a missing `predict_gnss.py`.
+- `pred_Uncertainty` is not a real probability/confidence estimate.
+- Historical `- 副本.py` files and multiple Masked ConvLSTM versions remain.
+- Third-party MATLAB libraries are duplicated.
+- There is no unified configuration, random seed, dependency lock file, or test suite.
+- `Gaussian_mixture_1.py` is better suited to the GNSS Error Map repository.
 
-#### `models/load_model.py`
+## 13. Data and Privacy
 
-较早模型的通用加载与评估脚本。使用 `Elevation`、`CNR`、`CNR_rate`、`Diff_DelPr_PrRate` 构建时序样本，执行预测并绘制混淆矩阵。文件名未说明具体模型，后续建议改名。
+This repository is private. Raw observations and reference trajectories can reveal precise times and locations, so UBX/RINEX files, CPT/INS records, large experiment CSVs, and generated outputs are excluded by default. Future sharing should use controlled storage and retain only anonymized samples and schema documentation here.
 
-## 10. 推荐阅读与运行顺序
+## 14. Third-party Code
 
-1. `DataProcess/RINEX_processing_main_f.m`：理解特征来源；
-2. `DataTag/zzy_skymask_generation_f.m`：理解标签来源；
-3. `TagDatabase/TagDatabase.csv`：检查字段和类别分布；
-4. `MLP/MLP_1.py` 或 `models/RF/`：建立基线；
-5. `models/BiLSTM/biLSTM.2.py`：主要时序分类；
-6. `models/SMconLSTM_training.py` + `models/Rho_module.py`：带卫星 mask 的模型；
-7. `models/load_model_SMconvLSTM.py`：新数据推理；
-8. `predict_gnss_quality.m`：连接 GNSS/INS 的后续工作。
-
-## 11. 依赖
-
-MATLAB 侧主要依赖 MATLAB、Mapping Toolbox、Statistics and Machine Learning Toolbox，以及仓库中的 goGPS、GTSAM、satnav3p01 和射线追踪代码。
-
-Python 侧主要依赖：
-
-```text
-numpy
-pandas
-scipy
-matplotlib
-scikit-learn
-tensorflow
-keras
-```
-
-具体版本尚未锁定。后续应从原环境导出 `requirements.txt` 或 `environment.yml`。
-
-## 12. 已知问题与整理状态
-
-- 多个脚本包含 `C:/Users/ZHANG/...` 绝对路径；
-- `Type` 与 `Uncertainty` 的含义尚未统一；
-- 四分类与五分类代码同时存在；
-- `predict_gnss_quality.m` 缺少 `predict_gnss.py`；
-- `pred_Uncertainty` 尚不是真实概率或置信度；
-- 存在 `- 副本.py` 和多份 Masked ConvLSTM；
-- 第三方 MATLAB 库在多个目录重复；
-- 尚无统一训练配置、随机种子、依赖版本和自动测试；
-- `Gaussian_mixture_1.py` 更适合迁移至 GNSS Error Map 仓库。
-
-这些问题不影响研究过程归档，但在正式公开或复现实验前应逐项处理。
-
-## 13. 数据与隐私
-
-仓库为 Private。原始观测和参考轨迹可能暴露实验时间及精确位置，因此默认不上传 `.ubx`、RINEX、CPT/INS 原始记录、大型实验 CSV 及生成的预测/定位输出。如需共享，建议另建受控数据存储，只在仓库保留匿名化小样例和字段说明。
-
-## 14. 第三方代码
-
-`goGPS`、GTSAM、ParforProgMon、satnav3p01 及其他附件来自各自上游项目或研究代码。使用、再分发或公开发布时，应遵循相应目录中的许可证和引用要求。本仓库收录这些文件不表示重新授权。
+goGPS, GTSAM, ParforProgMon, satnav3p01, and other supporting files originate from their respective upstream projects or research codebases. Use and redistribution must comply with the licences and citation requirements in their directories. Inclusion here does not constitute relicensing.
