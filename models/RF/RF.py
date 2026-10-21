@@ -153,7 +153,7 @@ def train_and_evaluate(X, y, features, class_labels):
     plot_confusion_matrix(cm, classes=target_names)
 
     # 特征重要性分析
-    analyze_feature_importance(model, X_val, y_val, features, fixed_time_steps)
+    analyze_feature_importance(model, X_val, y_val, features, X.shape[1] // len(features))
 
     return model
 

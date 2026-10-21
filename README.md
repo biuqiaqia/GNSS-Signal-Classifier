@@ -4,6 +4,8 @@ Research code for classifying GNSS signal propagation conditions in urban enviro
 
 > This is a research archive. Some scripts contain machine-specific paths, experimental implementations, and inconsistent class definitions. Raw UBX/RINEX data, personal trajectories, and most training CSV files are not included.
 
+The latest local execution results and reproducibility limitations are documented in [`REPRODUCTION_RESULTS.md`](REPRODUCTION_RESULTS.md).
+
 ## Table of Contents
 
 1. [Research Objectives](#1-research-objectives)
@@ -184,6 +186,7 @@ Reads ECEF/positioning results from CSV, converts them to latitude, longitude, a
 ### BiLSTM
 
 - `models/BiLSTM/biLSTM.2.py`: the most complete Python training entry point. It creates overlapping sequences, standardizes inputs, builds bidirectional/standard LSTM and dropout layers, uses focal loss, reports metrics and permutation importance, plots training results, and saves the Keras model. Paths are hard-coded; `train_bilstm.py` would be a clearer name.
+- `models/BiLSTM/best_gnss_model.h5`: best validation checkpoint recovered from the 21 October 2026 reproduction run; its corresponding metrics are recorded in `REPRODUCTION_RESULTS.md`.
 - `models/BiLSTM/BiLSTM.m`: MATLAB two-layer BiLSTM prototype with class weights and five-class output. It saves `trained_gnss_model.mat` but depends on missing helpers, and its focal-loss comments do not fully match the configuration.
 
 ### Base ConvLSTM

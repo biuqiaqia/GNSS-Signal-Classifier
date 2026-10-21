@@ -9,12 +9,13 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.utils.class_weight import compute_class_weight  # 新增导入
 import itertools
 import matplotlib
+from pathlib import Path
 
 # record the start time
 start_time = time.time()
 
 #data loading and preprocessing
-ds = pd.read_csv('TagDatabase.csv file path')
+ds = pd.read_csv(Path(__file__).resolve().parents[1] / 'TagDatabase' / 'TagDatabase.csv')
 features = ds[['CNR', 'Elevation']].values
 labels = ds['Type'].values
 

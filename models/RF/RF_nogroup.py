@@ -110,6 +110,11 @@ def plot_confusion_matrix(cm, classes, normalize=True, title='Confusion matrix',
 # ======================
 def analyze_feature_importance(model, X_val, y_val, feature_names):
     print("\n=== Feature Importance ===")
+    feature_names = [
+        f"{feature}_{stat}"
+        for feature in feature_names
+        for stat in ("mean", "std", "max", "min", "median")
+    ]
     
     # Mean Decrease Impurity
     importances = model.feature_importances_

@@ -54,6 +54,8 @@ def preprocess_new_data(csv_path, features, fixed_time_steps=50, stride=50):
         return np.array(windows_X), np.array(windows_mask)
 
     df = pd.read_csv(csv_path)
+    if 'Site' not in df.columns:
+        df['Site'] = 1
     print(f"原始新数据总量: {len(df)}条记录")
     print("类别分布（如果存在 Uncertainty 列）:")
     if 'Uncertainty' in df.columns:
@@ -65,7 +67,6 @@ def preprocess_new_data(csv_path, features, fixed_time_steps=50, stride=50):
 
     for site, site_df in df.groupby('Site'):
         print(f"\n处理站点: {site}")
-        site_df['GPS_Time'] = pd.to_datetime(site_df['GPS_Time'])
         site_df = site_df.sort_values('GPS_Time')
         time_points = site_df['GPS_Time'].drop_duplicates().sort_values().values 
         num_epochs = len(time_points)
@@ -84,7 +85,7 @@ def preprocess_new_data(csv_path, features, fixed_time_steps=50, stride=50):
 
 
             gps_time = row['GPS_Time']
-            time_idx = time_to_idx[pd.to_datetime(gps_time)]
+            time_idx = time_to_idx[gps_time]
 
             feat_values = row[features].values.astype(np.float32)
 
@@ -119,8 +120,8 @@ def preprocess_new_data(csv_path, features, fixed_time_steps=50, stride=50):
         for i in range(X_windows.shape[0]):
             start_idx = i * stride
             end_idx = start_idx + fixed_time_steps
-            start_time = pd.Timestamp(time_points[start_idx])
-            end_time = pd.Timestamp(time_points[end_idx - 1])
+            start_time = time_points[start_idx]
+            end_time = time_points[end_idx - 1]
             all_original_indices.append({
                 'Site': site,
                 'Start_Time': start_time,
@@ -233,8 +234,8 @@ else:
 
     for window_idx in range(y_pred_classes.shape[0]):
         site = original_info[window_idx]['Site']
-        start_time = pd.Timestamp(original_info[window_idx]['Start_Time'])  # ✅ 转为 pd.Timestamp
-        end_time = pd.Timestamp(original_info[window_idx]['End_Time'])      # ✅ 转为 pd.Timestamp
+        start_time = original_info[window_idx]['Start_Time']
+        end_time = original_info[window_idx]['End_Time']
 
         # 从原始数据中提取该站点在该时间段内的所有时间点
         site_df = raw_df[raw_df['Site'] == site]
@@ -259,7 +260,6 @@ else:
     # ======================
     # 将预测结果写入原始 DataFrame
     # ======================
-    raw_df['GPS_Time'] = pd.to_datetime(raw_df['GPS_Time'])
     raw_df['PRN'] = pd.to_numeric(raw_df['PRN'], errors='coerce')
 
     # 添加 Predicted_Type 列
@@ -273,7 +273,7 @@ else:
 
     # 保存结果
     raw_df.to_csv(OUTPUT_PREDICTION_PATH, index=False)
-    print(f"✅ 预测完成！结果已保存至: {OUTPUT_PREDICTION_PATH}")
+    print(f"Prediction complete. Results saved to: {OUTPUT_PREDICTION_PATH}")
 
     # ======================
     # 评估：画混淆矩阵（如果存在真实标签）
@@ -281,7 +281,7 @@ else:
     if 'Uncertainty' in raw_df.columns:
         eval_df = raw_df.dropna(subset=['Predicted_Type', 'Uncertainty'])
         if len(eval_df) == 0:
-            print("❌ 没有可用于评估的数据（无有效标签）")
+            print("No valid labelled observations are available for evaluation.")
         else:
             y_true = eval_df['Uncertainty'].astype(int)
             y_pred = eval_df['Predicted_Type'].astype(int)
@@ -296,7 +296,7 @@ else:
             cm = confusion_matrix(y_true, y_pred, labels=sorted(CLASS_LABELS.keys()))
             plot_confusion_matrix(cm, classes=target_names)
     else:
-        print("⚠️ 数据中无 'Uncertainty' 列，无法计算混淆矩阵。")
+        print("No 'Uncertainty' column is available for evaluation.")
 
     # 显示部分结果
     print("\n示例预测结果:")
