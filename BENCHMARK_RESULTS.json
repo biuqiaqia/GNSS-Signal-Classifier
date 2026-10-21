@@ -1,0 +1,138 @@
+{
+  "configuration": {
+    "seed": 42,
+    "features": [
+      "Elevation",
+      "Azimuth",
+      "CNR"
+    ],
+    "window": 10,
+    "split": "chronological 80/20 within each PRN",
+    "label_mapping": {
+      "0": "NLOS/Multipath",
+      "1": "LOS",
+      "2": "Reflection",
+      "3/4": "Diffraction"
+    }
+  },
+  "datasets": {
+    "TagDatabase": {
+      "rows": 259358,
+      "train_windows": 207227,
+      "test_windows": 51825,
+      "models": {
+        "Random Forest": {
+          "accuracy": 0.7525518572117704,
+          "macro_precision": 0.42016707967231137,
+          "macro_recall": 0.4310436369462541,
+          "macro_f1": 0.41709672072150783,
+          "weighted_f1": 0.7606504520636896,
+          "per_class_f1": {
+            "NLOS/Multipath": 0.7915160535828195,
+            "LOS": 0.7556587080910908,
+            "Reflection": 0.0,
+            "Diffraction": 0.12121212121212122
+          }
+        },
+        "MLP": {
+          "accuracy": 0.7051616015436566,
+          "macro_precision": 0.409757403276358,
+          "macro_recall": 0.41260253865963287,
+          "macro_f1": 0.39846325381823994,
+          "weighted_f1": 0.729986500353047,
+          "per_class_f1": {
+            "NLOS/Multipath": 0.7742491473834757,
+            "LOS": 0.709177119099339,
+            "Reflection": 0.0,
+            "Diffraction": 0.11042674879014518
+          }
+        },
+        "BiLSTM": {
+          "accuracy": 0.7290496864447661,
+          "macro_precision": 0.42743088565957876,
+          "macro_recall": 0.4186167226922573,
+          "macro_f1": 0.40636321962487126,
+          "weighted_f1": 0.7537351320319043,
+          "per_class_f1": {
+            "NLOS/Multipath": 0.8029346769203571,
+            "LOS": 0.7293135208154243,
+            "Reflection": 0.0,
+            "Diffraction": 0.09320468076370356
+          }
+        },
+        "SMConvLSTM": {
+          "accuracy": 0.6844187168355041,
+          "macro_precision": 0.4057660594242418,
+          "macro_recall": 0.3462811823951927,
+          "macro_f1": 0.364951743592524,
+          "weighted_f1": 0.7160022119690513,
+          "per_class_f1": {
+            "NLOS/Multipath": 0.7609504922937759,
+            "LOS": 0.6988564820763202,
+            "Reflection": 0.0,
+            "Diffraction": 0.0
+          }
+        }
+      }
+    },
+    "data_b": {
+      "rows": 9208,
+      "train_windows": 7244,
+      "test_windows": 1820,
+      "models": {
+        "Random Forest": {
+          "accuracy": 0.9741758241758242,
+          "macro_precision": 0.9678968773373223,
+          "macro_recall": 0.9802397213998797,
+          "macro_f1": 0.9732649774948506,
+          "weighted_f1": 0.9743609523507692,
+          "per_class_f1": {
+            "NLOS/Multipath": 0.9562841530054644,
+            "LOS": 0.9735788630904724,
+            "Reflection": 0.9860279441117764,
+            "Diffraction": 0.9771689497716894
+          }
+        },
+        "MLP": {
+          "accuracy": 0.9043956043956044,
+          "macro_precision": 0.9115393308946207,
+          "macro_recall": 0.9013041925753857,
+          "macro_f1": 0.903470301938062,
+          "weighted_f1": 0.9045455520819348,
+          "per_class_f1": {
+            "NLOS/Multipath": 0.9985734664764622,
+            "LOS": 0.9193154034229829,
+            "Reflection": 0.872072072072072,
+            "Diffraction": 0.8239202657807309
+          }
+        },
+        "BiLSTM": {
+          "accuracy": 0.9197802197802197,
+          "macro_precision": 0.9279658133955533,
+          "macro_recall": 0.9155785368216554,
+          "macro_f1": 0.9176777605179326,
+          "weighted_f1": 0.920256321441756,
+          "per_class_f1": {
+            "NLOS/Multipath": 0.9845288326300985,
+            "LOS": 0.9465899753492194,
+            "Reflection": 0.8829311885612153,
+            "Diffraction": 0.8566610455311973
+          }
+        },
+        "SMConvLSTM": {
+          "accuracy": 0.6225274725274725,
+          "macro_precision": 0.6512388565419174,
+          "macro_recall": 0.6941453092298392,
+          "macro_f1": 0.6097549048317578,
+          "weighted_f1": 0.5519714577573681,
+          "per_class_f1": {
+            "NLOS/Multipath": 0.6548175865294668,
+            "LOS": 0.17135549872122763,
+            "Reflection": 0.7905844155844156,
+            "Diffraction": 0.822262118491921
+          }
+        }
+      }
+    }
+  }
+}

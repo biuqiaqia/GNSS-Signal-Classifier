@@ -1,10 +1,10 @@
 # GNSS Signal Classifier
 
-Research code for classifying GNSS signal propagation conditions in urban environments. The project combines RINEX observations, broadcast ephemerides, reference trajectories, and 3D building models to generate per-satellite features and ray-tracing labels. MLP, Random Forest, BiLSTM, ConvLSTM, and spatially masked ConvLSTM (SMConvLSTM) models are then used for classification.
+Research code for classifying GNSS signal propagation conditions in urban environments. The project combines RINEX observations, broadcast ephemerides, reference trajectories, and 3D building models to generate per-satellite features and ray-tracing labels. MLP, Random Forest, BiLSTM, and spatially masked ConvLSTM (SMConvLSTM) models are compared under a unified benchmark.
 
-> This is a research archive. Some scripts contain machine-specific paths, experimental implementations, and inconsistent class definitions. Raw UBX/RINEX data, personal trajectories, and most training CSV files are not included.
+> This is a research archive. Some historical scripts contain machine-specific paths and experimental implementations. Raw RINEX data, personal trajectories, and most generated training CSV files are not included.
 
-The latest local execution results and reproducibility limitations are documented in [`REPRODUCTION_RESULTS.md`](REPRODUCTION_RESULTS.md).
+The latest local execution results and reproducibility limitations are documented in [`REPRODUCTION_RESULTS.md`](REPRODUCTION_RESULTS.md). Exact machine-readable metrics are stored in [`BENCHMARK_RESULTS.json`](BENCHMARK_RESULTS.json).
 
 ## Table of Contents
 
@@ -43,7 +43,7 @@ The earlier labelling code uses five classes:
 | 3 | NLOS_Diff | NLOS signal arriving through diffraction |
 | 4 | LOS_Diff | Direct component accompanied by diffraction effects |
 
-Some later Python models use four outputs, and some scripts use `Uncertainty` rather than `Type` as the target. Verify each input CSV's class mapping before reproducing an experiment.
+The unified benchmark uses four outputs. It retains classes 0–2 and merges class 4 (`LOS_Diff`) into class 3 (`Diffraction`). The name `NLOS/Multipath` is used for class 0 because the large archive calls it NLOS while `data_b` calls it multipath.
 
 ## 3. Dataset Schema
 
@@ -69,7 +69,7 @@ Some later Python models use four outputs, and some scripts use `Uncertainty` ra
 | `D_Coeff` | Diffraction coefficient |
 | `Type` | Ray-tracing signal-type label |
 
-The later datasets additionally use `Site`, `CNR_rate`, `Diff_DelPr_PrRate`, `SecDeri_pr`, `Uncertainty`, and receiver-velocity fields. The exact differences and intended model associations are documented below.
+The balanced dataset additionally uses `Site`, `CNR_rate`, `Diff_DelPr_PrRate`, and `SecDeri_pr`. These extra fields are retained as research data but are excluded from the unified comparison.
 
 
 ## 4. `DataProcess/`
@@ -114,59 +114,43 @@ The original consolidated labelled database and the largest dataset in this repo
 
 Its class distribution is highly imbalanced: 98,436 class-0, 140,704 class-1, 1,557 class-2, 16,275 class-3, and 2,386 class-4 observations. It should therefore not be treated as a balanced training set without an explicit sampling or weighting strategy.
 
-### `TagDatabase/data_b_output.csv`
+### `TagDatabase/data_b.csv`
 
-The four-class dataset read by both Random Forest scripts through their original path `System_ongoing/output/data_b.csv`:
+The single canonical balanced four-class dataset used by the unified benchmark:
 
-- **9,208 observations, 30 columns, approximately 2.26 MB**;
-- adds `CNR_rate`, `Diff_DelPr_PrRate`, `SecDeri_pr`, and `Site` for temporal and site-aware modelling;
+- **9,208 observations and 30 columns**;
+- adds `CNR_rate`, `Diff_DelPr_PrRate`, `SecDeri_pr`, and `Site` for later research;
 - uses weighted least-squares position fields (`WLS_*`) instead of the original `LS_*` fields;
-- removes `Max_PRN` and `Max_Residual`; and
-- maps `Type` to `0: Multi_Path`, `1: LOS`, `2: Reflection`, and `3: Diffraction`.
+- maps `Type` to `0: Multi_Path`, `1: LOS`, `2: Reflection`, and `3: Diffraction`; and
+- has class counts of 2,052, 2,477, 2,076, and 2,603 respectively.
 
-The class counts are 2,052, 2,477, 2,076, and 2,603 respectively. Compared with `TagDatabase.csv`, this is a much smaller and more balanced model-ready dataset.
-
-### `TagDatabase/data_b_dataset.csv`
-
-The version read by `models/BiLSTM/biLSTM.2.py` through its original path `System_ongoing/Dataset/data_b.csv`. It has the same 9,208 observations, sites, timestamps, and feature schema as `data_b_output.csv`, but the files are **not identical**:
-
-- classes 0 and 1 are unchanged;
-- class 2 contains 1,749 rather than 2,076 observations; and
-- class 3 contains 2,930 rather than 2,603 observations.
-
-This means 327 labels were reassigned from class 2 to class 3 in the BiLSTM copy. Both versions are retained to preserve reproducibility; they must not be silently substituted for one another. The repository does not yet contain documentation explaining why those labels were changed.
-
-### `TagDatabase/ublox_3_tag.csv`
-
-The later continuous u-blox experiment used directly by `models/SMconLSTM_training.py`:
-
-- **20,076 observations, 34 columns, approximately 7.66 MB**;
-- covers GPS times 133292–136799, suggesting a single continuous collection rather than a multi-experiment database;
-- adds receiver velocity (`VRx`, `VRy`, `VRz`), temporal derivative features, `Uncertainty`, and `los`; and
-- is reshaped by the trainer into a `sample × time × PRN × feature` tensor with an availability mask.
-
-Although the file retains `Type`, SMConvLSTM is trained against `Uncertainty`. The observed relationship is:
-
-| `Type` | `Uncertainty` | Observations |
-|---:|---:|---:|
-| 0 | 2 | 1,375 |
-| 1 | 0 | 12,780 |
-| 2 | 3 | 4,617 |
-| 3 | 0 | 538 |
-| 3 | 1 | 766 |
-
-`Uncertainty` is therefore a derived categorical target, not a probability or confidence score. In particular, `Type=3` is split between two uncertainty classes. The physical rule used for that split has not yet been recovered and should not be inferred solely from the numeric values.
+The extra engineered features are not used in the current comparison. Every model receives only `Elevation`, `Azimuth`, and `CNR`, ensuring that differences in results reflect the models rather than different input columns.
 
 ### Dataset lineage and model association
 
 ```text
-TagDatabase.csv       -> early five-class archive -> MLP
-data_b_output.csv     -> balanced four-class set  -> Random Forest
-data_b_dataset.csv    -> relabelled four-class set -> BiLSTM
-ublox_3_tag.csv       -> later masked sequence set -> SMConvLSTM
+TagDatabase.csv -> full five-class archive -> mapped to four classes -> all four models
+data_b.csv      -> balanced four-class set -> all four models
 ```
 
 These datasets may reveal experimental locations and trajectories. They should be anonymized or removed before the repository is made public.
+
+### Current unified results
+
+All values below come from the same features (`Elevation`, `Azimuth`, `CNR`), ten-observation PRN windows, four-class mapping, and chronological 80/20 split.
+
+| Dataset | Model | Accuracy | Macro F1 |
+|---|---|---:|---:|
+| Full `TagDatabase` | Random Forest | **0.7526** | **0.4171** |
+| Full `TagDatabase` | MLP | 0.7052 | 0.3985 |
+| Full `TagDatabase` | BiLSTM | 0.7290 | 0.4064 |
+| Full `TagDatabase` | SMConvLSTM | 0.6844 | 0.3650 |
+| Balanced `data_b` | Random Forest | **0.9742** | **0.9733** |
+| Balanced `data_b` | MLP | 0.9044 | 0.9035 |
+| Balanced `data_b` | BiLSTM | 0.9198 | 0.9177 |
+| Balanced `data_b` | SMConvLSTM | 0.6225 | 0.6098 |
+
+The full database's apparently reasonable accuracy is dominated by classes 0 and 1; all four models obtain zero F1 for the rare reflection class in the chronological test set. See [`REPRODUCTION_RESULTS.md`](REPRODUCTION_RESULTS.md) for per-class scores and limitations.
 
 ### `MLP/MLP_1.py`
 
@@ -180,13 +164,12 @@ Reads ECEF/positioning results from CSV, converts them to latitude, longitude, a
 
 ### Random Forest
 
-- `models/RF/RF.py`: builds fixed windows grouped by site, satellite, and continuous time; flattens `Elevation`, `CNR`, `CNR_rate`, and `Diff_DelPr_PrRate`; uses the window majority class; and reports metrics, confusion matrix, and feature importance.
-- `models/RF/RF_nogroup.py`: extracts grouped statistics such as means and standard deviations, allowing statistical aggregation to be compared with flattened windows.
+- `models/RF/RF.py`: historical time-window experiment. It is retained for reference, but its original four-feature setup is not used for the current cross-model results.
 
 ### BiLSTM
 
 - `models/BiLSTM/biLSTM.2.py`: the most complete Python training entry point. It creates overlapping sequences, standardizes inputs, builds bidirectional/standard LSTM and dropout layers, uses focal loss, reports metrics and permutation importance, plots training results, and saves the Keras model. Paths are hard-coded; `train_bilstm.py` would be a clearer name.
-- `models/BiLSTM/best_gnss_model.h5`: best validation checkpoint recovered from the 21 October 2026 reproduction run; its corresponding metrics are recorded in `REPRODUCTION_RESULTS.md`.
+- `models/BiLSTM/best_gnss_model.h5`: checkpoint from an earlier, non-unified reproduction run. It is not the source of the current comparison metrics.
 - `models/BiLSTM/BiLSTM.m`: MATLAB two-layer BiLSTM prototype with class weights and five-class output. It saves `trained_gnss_model.mat` but depends on missing helpers, and its focal-loss comments do not fully match the configuration.
 
 ### Base ConvLSTM
@@ -208,15 +191,21 @@ Reads ECEF/positioning results from CSV, converts them to latitude, longitude, a
 - `models/gnss_masked_convlstm_model.h5`: trained model (about 169 KB). Training-data version, class mapping, TensorFlow version, validation performance, and random seed are not documented.
 - `models/load_model.py`: generic evaluator for an earlier temporal model using `Elevation`, `CNR`, `CNR_rate`, and `Diff_DelPr_PrRate`. The filename should eventually identify its architecture.
 
+### Unified benchmark
+
+- `models/unified_benchmark.py`: authoritative comparison entry point. It loads both datasets, maps them to the same four classes, uses only `Elevation`, `Azimuth`, and `CNR`, creates ten-observation windows per PRN, applies the same chronological split, trains MLP, Random Forest, BiLSTM, and the repository's `SMConvLSTM`, and writes exact metrics to `BENCHMARK_RESULTS.json`.
+- `BENCHMARK_RESULTS.json`: machine-readable configuration, sample counts, aggregate metrics, and per-class F1 scores from the latest run.
+- `REPRODUCTION_RESULTS.md`: formatted result tables, interpretation, limitations, and reproduction instructions.
+
 ## 8. Recommended Reading Order
 
 1. `DataProcess/RINEX_processing_main_f.m` — feature generation.
 2. `DataTag/zzy_skymask_generation_f.m` — label generation.
 3. `TagDatabase/TagDatabase.csv` — schema and class distribution.
-4. `MLP/MLP_1.py` or `models/RF/` — conventional baselines.
-5. `models/BiLSTM/biLSTM.2.py` — main temporal classifier.
-6. `models/SMconLSTM_training.py` and `models/Rho_module.py` — satellite-masked model.
-7. `models/load_model_SMconvLSTM.py` — inference.
+4. `models/unified_benchmark.py` — reproducible four-model comparison.
+5. `REPRODUCTION_RESULTS.md` — current results and their interpretation.
+6. `MLP/`, `models/RF/`, and `models/BiLSTM/` — historical standalone experiments.
+7. `models/SMconLSTM_training.py` and `models/Rho_module.py` — original satellite-masked implementation.
 
 ## 9. Dependencies
 
@@ -227,10 +216,10 @@ Python dependencies include `numpy`, `pandas`, `scipy`, `matplotlib`, `scikit-le
 ## 10. Known Issues
 
 - Absolute `C:/Users/ZHANG/...` paths remain in several scripts.
-- `Type` and `Uncertainty` are not consistently defined.
 - Four-class and five-class implementations coexist.
 - `pred_Uncertainty` is not a real probability/confidence estimate.
-- There is no unified configuration, random seed, dependency lock file, or test suite.
+- The unified benchmark has a fixed configuration and random seed, but there is still no dependency lock file or automated test suite.
+- The unified SMConvLSTM comparison uses per-PRN `1 × 1` spatial windows for identical targets; it therefore does not measure the possible benefit of cross-satellite spatial context.
 
 ## 11. Third-party Code
 
