@@ -9,14 +9,14 @@ Research code for classifying GNSS signal propagation conditions in urban enviro
 1. [Research Objectives](#1-research-objectives)
 2. [Signal Classes](#2-signal-classes)
 3. [Dataset Schema](#3-dataset-schema)
-4. [`DataProcess/`](#5-dataprocess)
-5. [`DataTag/`](#6-datatag)
-6. [Data, Baselines, and Visualization](#7-data-baselines-and-visualization)
-7. [`models/`](#8-models)
-8. [Recommended Reading Order](#9-recommended-reading-order)
-9. [Dependencies](#10-dependencies)
-10. [Known Issues](#11-known-issues)
-11. [Third-party Code](#13-third-party-code)
+4. [`DataProcess/`](#4-dataprocess)
+5. [`DataTag/`](#5-datatag)
+6. [Data, Baselines, and Visualization](#6-data-baselines-and-visualization)
+7. [`models/`](#7-models)
+8. [Recommended Reading Order](#8-recommended-reading-order)
+9. [Dependencies](#9-dependencies)
+10. [Known Issues](#10-known-issues)
+11. [Third-party Code](#11-third-party-code)
 
 ## 1. Research Objectives
 
@@ -229,12 +229,8 @@ Python dependencies include `numpy`, `pandas`, `scipy`, `matplotlib`, `scikit-le
 - Absolute `C:/Users/ZHANG/...` paths remain in several scripts.
 - `Type` and `Uncertainty` are not consistently defined.
 - Four-class and five-class implementations coexist.
-- `predict_gnss_quality.m` references a missing `predict_gnss.py`.
 - `pred_Uncertainty` is not a real probability/confidence estimate.
-- Historical `- 副本.py` files and multiple Masked ConvLSTM versions remain.
-- Third-party MATLAB libraries are duplicated.
 - There is no unified configuration, random seed, dependency lock file, or test suite.
-- `Gaussian_mixture_1.py` is better suited to the GNSS Error Map repository.
 
 ## 11. Third-party Code
 
