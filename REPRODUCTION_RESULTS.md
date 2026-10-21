@@ -1,7 +1,6 @@
 # Model Reproduction Results
 
-This document records a local reproduction run performed on 21 October 2026. The values below are newly generated results, not metrics copied from an earlier report.
-
+This document records a local reproduction run performed on 21 October 2026. 
 ## Environment
 
 - Windows
