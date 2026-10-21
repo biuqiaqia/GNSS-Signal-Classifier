@@ -29,7 +29,7 @@ The earlier labelling code uses five classes:
 
 Some later Python models use four outputs, and some scripts use `Uncertainty` rather than `Type` as the target. Verify each input CSV's class mapping before reproducing an experiment.
 
-## 4. Dataset Schema
+## 3. Dataset Schema
 
 `TagDatabase/TagDatabase.csv` contains:
 
@@ -55,7 +55,7 @@ Some later Python models use four outputs, and some scripts use `Uncertainty` ra
 
 The later datasets additionally use `Site`, `CNR_rate`, `Diff_DelPr_PrRate`, `SecDeri_pr`, `Uncertainty`, and receiver-velocity fields. The exact differences and intended model associations are documented below.
 
-## 5. Root Files
+## 4. Root Files
 
 ### `README.md`
 
@@ -73,7 +73,7 @@ Experimental MATLAB-to-Python inference interface. It extracts elevation, azimut
 
 Builds and plots a pseudorange-error Gaussian mixture from LOS, reflection, and diffraction states and their additional path lengths. It relates to the labels but fits the GNSS Error Map / measurement-noise project more closely.
 
-## 6. `DataProcess/`
+## 5. `DataProcess/`
 
 ### `DataProcess/RINEX_processing_main_f.m`
 
@@ -91,7 +91,7 @@ Third-party GTSAM MATLAB toolbox for factor graphs, navigation, and optimization
 
 Third-party MATLAB parallel-loop progress utility. `ParforProgressbar.m` is the `parfor` progress class, `progressbar.m` implements the bar, `testParforProgressbar.m` is an example, and `Readme.md`, `license.txt`, and `progress.png` are upstream documentation assets.
 
-## 7. `DataTag/`
+## 6. `DataTag/`
 
 ### `DataTag/zzy_skymask_generation_f.m`
 
@@ -101,7 +101,7 @@ Main label generator. It reads the per-satellite CSV and building KML, creates a
 
 Historical support code for building-KML parsing, sky-mask creation/merging, LOS/NLOS decisions, reflection and diffraction ray tracing, UTD diffraction coefficients, GNSS RUMS examples, and RINEX/positioning helpers. It also contains copies of goGPS, GTSAM, and satnav3p01. These preserve the original environment but should eventually be deduplicated and documented as dependencies.
 
-## 8. Data, Baselines, and Visualization
+## 7. Data, Baselines, and Visualization
 
 ### `TagDatabase/TagDatabase.csv`
 
@@ -177,7 +177,7 @@ Early multilayer-perceptron baseline using mainly `CNR` and `Elevation` to predi
 
 Reads ECEF/positioning results from CSV, converts them to latitude, longitude, and height, and creates a Google Earth KML trajectory. A clearer future name is `export_trajectory_to_kml.py`.
 
-## 9. `models/`
+## 8. `models/`
 
 ### Random Forest
 
@@ -210,7 +210,7 @@ Reads ECEF/positioning results from CSV, converts them to latitude, longitude, a
 - `models/gnss_masked_convlstm_model.h5`: trained model (about 169 KB). Training-data version, class mapping, TensorFlow version, validation performance, and random seed are not documented.
 - `models/load_model.py`: generic evaluator for an earlier temporal model using `Elevation`, `CNR`, `CNR_rate`, and `Diff_DelPr_PrRate`. The filename should eventually identify its architecture.
 
-## 10. Recommended Reading Order
+## 9. Recommended Reading Order
 
 1. `DataProcess/RINEX_processing_main_f.m` — feature generation.
 2. `DataTag/zzy_skymask_generation_f.m` — label generation.
@@ -221,13 +221,13 @@ Reads ECEF/positioning results from CSV, converts them to latitude, longitude, a
 7. `models/load_model_SMconvLSTM.py` — inference.
 8. `predict_gnss_quality.m` — planned GNSS/INS integration.
 
-## 11. Dependencies
+## 10. Dependencies
 
 MATLAB dependencies include MATLAB, Mapping Toolbox, Statistics and Machine Learning Toolbox, and the bundled goGPS, GTSAM, satnav3p01, and ray-tracing code.
 
 Python dependencies include `numpy`, `pandas`, `scipy`, `matplotlib`, `scikit-learn`, `tensorflow`, and `keras`. Exact versions have not been recovered; a future reproducibility pass should add `requirements.txt` or `environment.yml`.
 
-## 12. Known Issues
+## 11. Known Issues
 
 - Absolute `C:/Users/ZHANG/...` paths remain in several scripts.
 - `Type` and `Uncertainty` are not consistently defined.
@@ -239,10 +239,10 @@ Python dependencies include `numpy`, `pandas`, `scipy`, `matplotlib`, `scikit-le
 - There is no unified configuration, random seed, dependency lock file, or test suite.
 - `Gaussian_mixture_1.py` is better suited to the GNSS Error Map repository.
 
-## 13. Data and Privacy
+## 12. Data and Privacy
 
 This repository is private. Raw observations and reference trajectories can reveal precise times and locations, so UBX/RINEX files, CPT/INS records, large experiment CSVs, and generated outputs are excluded by default. Future sharing should use controlled storage and retain only anonymized samples and schema documentation here.
 
-## 14. Third-party Code
+## 13. Third-party Code
 
 goGPS, GTSAM, ParforProgMon, satnav3p01, and other supporting files originate from their respective upstream projects or research codebases. Use and redistribution must comply with the licences and citation requirements in their directories. Inclusion here does not constitute relicensing.
