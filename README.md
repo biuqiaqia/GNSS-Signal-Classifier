@@ -220,6 +220,7 @@ Python dependencies include `numpy`, `pandas`, `scipy`, `matplotlib`, `scikit-le
 - `pred_Uncertainty` is not a real probability/confidence estimate.
 - The unified benchmark has a fixed configuration and random seed, but there is still no dependency lock file or automated test suite.
 - The unified SMConvLSTM comparison uses per-PRN `1 × 1` spatial windows for identical targets; it therefore does not measure the possible benefit of cross-satellite spatial context.
+- Wrong comments left, read the code.
 
 ## 11. Third-party Code
 
